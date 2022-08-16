@@ -14,7 +14,6 @@ object Aggregations extends App {
     .option("inferSchema", "true")
     .json("src/main/resources/data/movies.json")
 
-
   // counting
   val genresCountDF = moviesDF.select(count(col("Major_Genre"))) // all the values except null
   moviesDF.selectExpr("count(Major_Genre)")
@@ -50,7 +49,7 @@ object Aggregations extends App {
 
   val countByGenreDF = moviesDF
     .groupBy(col("Major_Genre")) // includes null
-    .count()  // select count(*) from moviesDF group by Major_Genre
+    .count()                     // select count(*) from moviesDF group by Major_Genre
 
   val avgRatingByGenreDF = moviesDF
     .groupBy(col("Major_Genre"))
@@ -64,7 +63,6 @@ object Aggregations extends App {
     )
     .orderBy(col("Avg_Rating"))
 
-
   /**
     * Exercises
     *
@@ -73,7 +71,6 @@ object Aggregations extends App {
     * 3. Show the mean and standard deviation of US gross revenue for the movies
     * 4. Compute the average IMDB rating and the average US gross revenue PER DIRECTOR
     */
-
 
   // 1
   moviesDF

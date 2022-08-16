@@ -1,6 +1,6 @@
 package part2dataframes
 
-import org.apache.spark.sql.SparkSession
+import org.apache.spark.sql.{Column, SparkSession}
 import org.apache.spark.sql.functions.{col, column, expr}
 
 object ColumnsAndExpressions extends App {
@@ -15,7 +15,7 @@ object ColumnsAndExpressions extends App {
     .json("src/main/resources/data/cars.json")
 
   // Columns
-  val firstColumn = carsDF.col("Name")
+  val firstColumn: Column = carsDF.col("Name")
 
   // selecting (projecting)
   val carNamesDF = carsDF.select(firstColumn)
@@ -26,7 +26,7 @@ object ColumnsAndExpressions extends App {
     carsDF.col("Name"),
     col("Acceleration"),
     column("Weight_in_lbs"),
-    'Year, // Scala Symbol, auto-converted to column
+    'Year,         // Scala Symbol, auto-converted to column
     $"Horsepower", // fancier interpolated string, returns a Column object
     expr("Origin") // EXPRESSION
   )
@@ -44,6 +44,7 @@ object ColumnsAndExpressions extends App {
     weightInKgExpression.as("Weight_in_kg"),
     expr("Weight_in_lbs / 2.2").as("Weight_in_kg_2")
   )
+  carsWithWeightsDF.show()
 
   // selectExpr
   val carsWithSelectExprWeightsDF = carsDF.selectExpr(
@@ -91,49 +92,37 @@ object ColumnsAndExpressions extends App {
     */
 
   val moviesDF = spark.read.option("inferSchema", "true").json("src/main/resources/data/movies.json")
-  moviesDF.show()
 
-  // 1
-  val moviesReleaseDF = moviesDF.select("Title", "Release_Date")
-  val moviesReleaseDF2 = moviesDF.select(
-    moviesDF.col("Title"),
-    col("Release_Date"),
-    $"Major_Genre",
-    expr("IMDB_Rating")
-  )
-  val moviesReleaseDF3 = moviesDF.selectExpr(
-    "Title", "Release_Date"
+  // SELECTING:
+
+  val movies2ColsDF_2 = moviesDF.select(
+    $"Title",
+    column("IMDB_Votes").as("IMDB"),
+    expr("Director"),
+    moviesDF.col("IMDB_Votes").as("Votes")
   )
 
-  // 2
-  val moviesProfitDF = moviesDF.select(
-    col("Title"),
-    col("US_Gross"),
-    col("Worldwide_Gross"),
-    col("US_DVD_Sales"),
-    (col("US_Gross") + col("Worldwide_Gross")).as("Total_Gross")
-  )
-
-  val moviesProfitDF2 = moviesDF.selectExpr(
-    "Title",
-    "US_Gross",
+  val movies2ColsDF = moviesDF.selectExpr(
     "Worldwide_Gross",
-    "US_Gross + Worldwide_Gross as Total_Gross"
-  )
+    "Release_Date as Release"
+  ).orderBy("Release_Date")
 
-  val moviesProfitDF3 = moviesDF.select("Title", "US_Gross", "Worldwide_Gross")
+  // SUM UP
+  val grossesMoviesDF = moviesDF.select(
+    col("Title"),
+//    (col("US_Gross") + col("Worldwide_Gross") + col("US_DVD_Sales")).as("Total_Gross"),
+    expr("US_Gross + Worldwide_Gross").as("Total_Gross"),
+    expr("US_Gross + Worldwide_Gross as Total_Gross_2")
+  ) //.filter($"US_DVD_Sales" =!= null)
+
+  val moviesProfitDF_3 = moviesDF.select("Title", "US_Gross", "Worldwide_Gross")
     .withColumn("Total_Gross", col("US_Gross") + col("Worldwide_Gross"))
+  moviesProfitDF_3.show(10)
 
-  // 3
-  val atLeastMediocreComediesDF = moviesDF.select("Title", "IMDB_Rating")
-    .where(col("Major_Genre") === "Comedy" and col("IMDB_Rating") > 6)
+  // Filtering
+  val comedyMoviesDF = moviesDF.select($"Title", $"Major_Genre", $"IMDB_Rating")
+    .where($"Major_Genre" === "Comedy" and $"IMDB_Rating" > 6)
 
-  val comediesDF2 = moviesDF.select("Title", "IMDB_Rating")
-    .where(col("Major_Genre") === "Comedy")
-    .where(col("IMDB_Rating") > 6)
+//  grossesMoviesDF.show()
 
-  val comediesDF3 = moviesDF.select("Title", "IMDB_Rating")
-    .where("Major_Genre = 'Comedy' and IMDB_Rating > 6")
-
-  comediesDF3.show
 }
