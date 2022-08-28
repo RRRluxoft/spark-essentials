@@ -1,7 +1,7 @@
 package part2dataframes
 
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.functions.{expr, max, col}
+import org.apache.spark.sql.functions.{col, expr, max}
 
 object Joins extends App {
 
@@ -42,7 +42,6 @@ object Joins extends App {
   // anti-joins = everything in the left DF for which there is NO row in the right DF satisfying the condition
   guitaristsDF.join(bandsDF, joinCondition, "left_anti")
 
-
   // things to bear in mind
   // guitaristsBandsDF.select("id", "band").show // this crashes
 
@@ -71,7 +70,6 @@ object Joins extends App {
   val url = "jdbc:postgresql://localhost:5432/rtjvm"
   val user = "docker"
   val password = "docker"
-
   def readTable(tableName: String) = spark.read
     .format("jdbc")
     .option("driver", driver)
@@ -81,27 +79,39 @@ object Joins extends App {
     .option("dbtable", s"public.$tableName")
     .load()
 
-  val employeesDF = readTable("employees")
   val salariesDF = readTable("salaries")
-  val deptManagersDF = readTable("dept_manager")
+  val employeesDF = readTable("employees")
+  val deptManagerDF = readTable("dept_manager")
   val titlesDF = readTable("titles")
 
-  // 1
-  val maxSalariesPerEmpNoDF = salariesDF.groupBy("emp_no").agg(max("salary").as("maxSalary"))
-  val employeesSalariesDF = employeesDF.join(maxSalariesPerEmpNoDF, "emp_no")
+  // 1.
+  val maxSalariesPerEmployeesDF =
+    salariesDF
+      .groupBy("emp_no")
+      .agg(max("salary").as("maxSalary"))
 
-  // 2
-  val empNeverManagersDF = employeesDF.join(
-    deptManagersDF,
-    employeesDF.col("emp_no") === deptManagersDF.col("emp_no"),
-    "left_anti"
-  )
+  val joinConditionEmplOnSalary = employeesDF.col("emp_no") === salariesDF.col("emp_no")
+  val employeesSalaryDF = employeesDF
+    .join(maxSalariesPerEmployeesDF, joinConditionEmplOnSalary)
 
-  // 3
-  val mostRecentJobTitlesDF = titlesDF.groupBy("emp_no", "title").agg(max("to_date"))
-  val bestPaidEmployeesDF = employeesSalariesDF.orderBy(col("maxSalary").desc).limit(10)
-  val bestPaidJobsDF = bestPaidEmployeesDF.join(mostRecentJobTitlesDF, "emp_no")
+  // 2.
+  val joinConditionEmplOnDeptManager = employeesDF.col("emp_no") === deptManagerDF.col("emp_no")
+  employeesDF
+    .join(deptManagerDF, joinConditionEmplOnDeptManager, "left_anti")
 
+  // 3.
+  val mostRecentJobTitleDF =
+    titlesDF
+      .groupBy("emp_no", "title")
+      .agg(max("to_date"))
+
+  val bestPaidEmployeesDF =
+    employeesSalaryDF
+      .orderBy(col("maxSalary").desc)
+      .limit(10)
+
+  val bestPaidJobsDF =
+    bestPaidEmployeesDF.join(mostRecentJobTitleDF, "emp_no")
   bestPaidJobsDF.show()
-}
 
+}
