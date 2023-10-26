@@ -114,4 +114,15 @@ object Joins extends App {
     bestPaidEmployeesDF.join(mostRecentJobTitleDF, "emp_no")
   bestPaidJobsDF.show()
 
+  case class Thing[T]()
+
+  import scala.reflect.runtime.universe._
+  def processThing[T: TypeTag](thing: Thing[T]) = {
+    typeOf[T] match {
+      case t if t =:= typeOf[Seq[Int]]    => "Thing of Seq[Int]"
+      case t if t =:= typeOf[Seq[String]] => "Thing of Seq[String]"
+      case t if t =:= typeOf[Int]         => "Thing of Int"
+      case _                              => "Thing of other"
+    }
+  }
 }
